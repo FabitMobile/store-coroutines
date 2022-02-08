@@ -1,0 +1,18 @@
+ext {
+    coroutinesVersion =    '1.6.0'
+
+    //Testing
+    jUnitVersion      =    '4.13'
+    mockkVersion      =    '1.12.0'
+
+    dependencies = [
+            kotlinStdlib : "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version",
+            coroutines   : "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion",
+    ]
+
+    testDependencies = [
+            junit        : "junit:junit:$jUnitVersion",
+            coroutines   : "org.jetbrains.kotlinx:kotlinx-coroutines-test:$coroutinesVersion",
+            mockk        : "io.mockk:mockk:$mockkVersion",
+    ]
+}

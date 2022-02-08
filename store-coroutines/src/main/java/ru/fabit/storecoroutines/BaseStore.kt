@@ -8,6 +8,7 @@ abstract class BaseStore<State, Action>(
     currentState: State,
     private val reducer: Reducer<State, Action>,
     private val errorHandler: ErrorHandler,
+    bootstrapAction: Action? = null,
     private val sideEffects: Iterable<SideEffect<State, Action>> = CopyOnWriteArrayList(),
     private val bindActionSources: Iterable<BindActionSource<State, Action>> = CopyOnWriteArrayList(),
     private val actionSources: Iterable<ActionSource<Action>> = CopyOnWriteArrayList(),
@@ -19,8 +20,8 @@ abstract class BaseStore<State, Action>(
     private val _actions = MutableSharedFlow<Action>()
     private val actions = _actions.asSharedFlow()
 
-    private val _state = MutableSharedFlow<State>(1)
-    override val state = _state.asSharedFlow() as Flow<State>
+    private val _state = MutableStateFlow(currentState)
+    override val state = _state.asStateFlow()
 
     private var _currentState: State = currentState
     override val currentState: State
@@ -28,11 +29,13 @@ abstract class BaseStore<State, Action>(
 
     init {
         scope.launch(Dispatchers.IO) {
-            _state.emit(currentState)
             handleActions()
         }
         scope.launch(Dispatchers.IO) {
             dispatchActionSource()
+        }
+        bootstrapAction?.let {
+            dispatchAction(it)
         }
     }
 

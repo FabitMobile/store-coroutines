@@ -1,1 +1,2 @@
-include ':store'
+rootProject.name = "store-coroutines"
+include ':library-store-coroutines'

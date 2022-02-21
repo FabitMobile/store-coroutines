@@ -25,6 +25,8 @@ sealed class TestAction {
 
     data class BindAction3(val value: String) : TestAction()
 
+    data class BindAction4(val value: String) : TestAction()
+
     data class SideAction(val value: String) : TestAction()
 
     data class SideAction2(val value: String) : TestAction()

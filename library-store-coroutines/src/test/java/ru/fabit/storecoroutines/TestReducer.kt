@@ -27,6 +27,9 @@ class TestReducer : Reducer<TestState, TestAction> {
             is TestAction.BindAction3 -> state.copy(
                 value = action.value
             )
+            is TestAction.BindAction4 -> state.copy(
+                value = action.value
+            )
             is TestAction.SideAction -> state.copy(
                 value = action.value
             )

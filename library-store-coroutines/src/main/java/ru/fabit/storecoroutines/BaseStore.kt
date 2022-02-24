@@ -17,6 +17,10 @@ abstract class BaseStore<State, Action>(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private var sideEffectsJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var actionHandlersJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var bindActionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
+
     private val _actions = MutableSharedFlow<Action>()
     private val actions = _actions.asSharedFlow()
 
@@ -54,15 +58,15 @@ abstract class BaseStore<State, Action>(
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
             _currentState = state
-            scope.launch(Dispatchers.IO) {
+            sideEffectsJobs.start(action, scope.launch(Dispatchers.IO) {
                 dispatchSideEffect(state, action)
-            }
-            scope.launch(Dispatchers.IO) {
+            })
+            actionHandlersJobs.start(action, scope.launch(Dispatchers.IO) {
                 dispatchActionHandler(state, action)
-            }
-            scope.launch(Dispatchers.IO) {
+            })
+            bindActionSourcesJobs.start(action, scope.launch(Dispatchers.IO) {
                 dispatchBindActionSource(state, action)
-            }
+            })
         }
     }
 
@@ -125,5 +129,14 @@ abstract class BaseStore<State, Action>(
                 errorHandler.handle(t)
             }
         }
+    }
+
+    private fun MutableMap<String, Job?>.start(action: Action, job: Job) {
+        val className = action!!::class.java.name
+        with(iterator()) {
+            forEach { if (it.value?.isCompleted == true) remove() }
+        }
+        this[className]?.cancel()
+        this[className] = job
     }
 }

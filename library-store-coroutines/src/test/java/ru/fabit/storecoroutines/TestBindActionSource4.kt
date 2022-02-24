@@ -10,7 +10,8 @@ class TestBindActionSource4 : BindActionSource<TestState, TestAction>(
         flow {
             emit(TestAction.Action(action.value))
             delay(5000)
-            emit(TestAction.Action(action.value))
+            //одиноковые значения не обрабатываются
+            emit(TestAction.Action(action.value + "2"))
         }
     },
     error = { TestAction.BindAction("TestBindActionSource4") }

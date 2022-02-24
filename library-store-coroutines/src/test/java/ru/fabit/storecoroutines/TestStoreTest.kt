@@ -41,6 +41,18 @@ class TestStoreTest {
         )
     )
 
+    private fun storeMini() = TestStore(
+        TestState("init"),
+        TestReducer(),
+        errorHandler,
+        TestAction.BootstrapAction,
+        bindActionSources = CopyOnWriteArrayList(
+            listOf(
+                TestBindActionSource4()
+            )
+        )
+    )
+
     private var actions = CopyOnWriteArrayList<String>()
 
     @Test
@@ -94,7 +106,7 @@ class TestStoreTest {
 
     @Test
     fun test3() = runBlocking {
-        val store = store()
+        val store = storeMini()
 
         val job = CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             store.state.collect { state ->
@@ -109,7 +121,7 @@ class TestStoreTest {
         delay(6_000)
 
         Assert.assertEquals(
-            listOf("bootstrap action", "init", "1", "2", "2").sorted(), actions.sorted()
+            listOf("bootstrap action", "init", "1", "2", "22").sorted(), actions.sorted()
         )
         job.cancel()
         actions.clear()

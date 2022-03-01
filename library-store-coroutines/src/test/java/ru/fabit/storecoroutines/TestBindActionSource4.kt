@@ -6,12 +6,12 @@ import kotlinx.coroutines.flow.flow
 class TestBindActionSource4 : BindActionSource<TestState, TestAction>(
     requirement = { action -> action is TestAction.BindAction4 },
     source = { _, action ->
-        action as TestAction.BindAction4
         flow {
-            emit(TestAction.Action(action.value))
+            action as TestAction.BindAction4
+            emit(TestAction.Action("BindActionSource4Completed"))
             delay(5000)
             //одиноковые значения не обрабатываются
-            emit(TestAction.Action(action.value + "2"))
+            emit(TestAction.Action("delayBindActionSource4Completed"))
         }
     },
     error = { TestAction.BindAction("TestBindActionSource4") }

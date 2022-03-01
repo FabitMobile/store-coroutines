@@ -2,6 +2,7 @@ package ru.fabit.storecoroutines
 
 class TestReducer : Reducer<TestState, TestAction> {
     override fun reduce(state: TestState, action: TestAction): TestState {
+        println("TestReducer -> $action")
         return when (action) {
             is TestAction.NoAction -> state.copy(
                 value = "no action"

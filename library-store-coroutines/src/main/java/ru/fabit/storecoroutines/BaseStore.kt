@@ -1,10 +1,8 @@
 package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.CopyOnWriteArrayList
 
 abstract class BaseStore<State, Action>(
@@ -25,7 +23,7 @@ abstract class BaseStore<State, Action>(
     private var bindActionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
     private var actionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
 
-    private val _actions = MutableSharedFlow<Action>()
+    private val _actions = MutableSharedFlow<Action>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.SUSPEND)
     private val actions = _actions.asSharedFlow()
 
     private val _state = MutableSharedFlow<State>(replay = 1)
@@ -34,6 +32,7 @@ abstract class BaseStore<State, Action>(
             _state.tryEmit(currentState)
             return _state.asSharedFlow()
         }
+
     private var _currentState: State = currentState
     override val currentState: State
         get() = _currentState
@@ -43,10 +42,10 @@ abstract class BaseStore<State, Action>(
             handleActions()
         }
         scope.launch {
+            bootstrapAction?.let {
+                dispatchAction(it)
+            }
             dispatchActionSource()
-        }
-        bootstrapAction?.let {
-            dispatchAction(it)
         }
     }
 
@@ -58,15 +57,31 @@ abstract class BaseStore<State, Action>(
 
     override fun dispose() {
         scope.cancel()
+        sideEffectsJobs.values.forEach {
+            it?.cancel()
+        }
         sideEffectsJobs.clear()
+
+        actionHandlersJobs.values.forEach {
+            it?.cancel()
+        }
         actionHandlersJobs.clear()
+
+        bindActionSourcesJobs.values.forEach {
+            it?.cancel()
+        }
         bindActionSourcesJobs.clear()
+
+        actionSourcesJobs.values.forEach {
+            it?.cancel()
+        }
         actionSourcesJobs.clear()
     }
 
     private suspend fun handleActions() {
         actions.collect { action ->
             val state = reducer.reduce(currentState, action)
+            println("${System.currentTimeMillis()}: _state.emit $action $state")
             _state.emit(state)
             _currentState = state
             dispatchSideEffect(state, action)

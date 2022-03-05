@@ -10,7 +10,8 @@ class TestActionSource : ActionSource<TestAction>(
             while (true) {
                 i++
                 kotlinx.coroutines.delay(1000)
-                emit(TestAction.Action("TestActionSource, $i"))
+                val action = TestAction.Action("TestActionSource, $i")
+                emit(action)
 
             }
         }

@@ -1,6 +1,7 @@
 package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -17,113 +18,157 @@ abstract class BaseStore<State, Action>(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    private val _actions = MutableSharedFlow<Action>()
+    private var sideEffectsJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var actionHandlersJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var bindActionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var actionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
+
+    private val _actions = MutableSharedFlow<Action>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.SUSPEND)
     private val actions = _actions.asSharedFlow()
 
-    private val _state = MutableStateFlow(currentState)
-    override val state = _state.asStateFlow()
+    private val _state = MutableSharedFlow<State>(replay = 1)
+    override val state: SharedFlow<State>
+        get() {
+            _state.tryEmit(currentState)
+            return _state.asSharedFlow()
+        }
 
     private var _currentState: State = currentState
     override val currentState: State
         get() = _currentState
 
     init {
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
             handleActions()
         }
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
+            bootstrapAction?.let {
+                dispatchAction(it)
+            }
             dispatchActionSource()
-        }
-        bootstrapAction?.let {
-            dispatchAction(it)
         }
     }
 
     override fun dispatchAction(action: Action) {
-        scope.launch(Dispatchers.IO) {
+        scope.launch {
             _actions.emit(action)
         }
     }
 
     override fun dispose() {
         scope.cancel()
+        sideEffectsJobs.clear()
+        actionHandlersJobs.clear()
+        bindActionSourcesJobs.clear()
+        actionSourcesJobs.clear()
     }
 
-    private suspend inline fun handleActions() {
+    private suspend fun handleActions() {
         actions.collect { action ->
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
             _currentState = state
-            scope.launch(Dispatchers.IO) {
-                dispatchSideEffect(state, action)
-            }
-            scope.launch(Dispatchers.IO) {
-                dispatchActionHandler(state, action)
-            }
-            scope.launch(Dispatchers.IO) {
-                dispatchBindActionSource(state, action)
-            }
+            dispatchSideEffect(state, action)
+            dispatchActionHandler(state, action)
+            dispatchBindActionSource(state, action)
         }
     }
 
-    private suspend inline fun dispatchSideEffect(state: State, action: Action) {
+    private fun dispatchSideEffect(state: State, action: Action) {
         sideEffects.filter { sideEffect ->
             sideEffect.requirement(state, action)
         }.forEach { sideEffect ->
-            try {
-                _actions.emit(sideEffect(state, action))
-            } catch (t: Throwable) {
-                errorHandler.handle(t)
-                _actions.emit(sideEffect(t))
-            }
-        }
-    }
-
-    private suspend inline fun dispatchActionSource() {
-        actionSources.map { actionSource ->
-            try {
-                actionSource().catch {
-                    errorHandler.handle(it)
-                    emit(actionSource(it))
+            sideEffectsJobs.start(sideEffect::class.java.simpleName) {
+                scope.launch {
+                    try {
+                        _actions.emit(sideEffect(state, action))
+                    } catch (t: Throwable) {
+                        t.handleCancellationException {
+                            errorHandler.handle(t)
+                            _actions.emit(sideEffect(t))
+                        }
+                    }
                 }
-            } catch (t: Throwable) {
-                errorHandler.handle(t)
-                flowOf(actionSource(t))
             }
-        }.merge().collect {
-            _actions.emit(it)
         }
     }
 
-    private suspend inline fun dispatchBindActionSource(state: State, action: Action) {
+    private fun dispatchActionSource() {
+        actionSources.map { actionSource ->
+            actionSourcesJobs.start(actionSource::class.java.simpleName) {
+                scope.launch {
+                    try {
+                        actionSource().catch {
+                            it.handleCancellationException {
+                                errorHandler.handle(it)
+                                emit(actionSource(it))
+                            }
+                        }.collect {
+                            _actions.emit(it)
+                        }
+                    } catch (t: Throwable) {
+                        t.handleCancellationException {
+                            errorHandler.handle(t)
+                            _actions.emit(actionSource(t))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun dispatchBindActionSource(state: State, action: Action) {
         bindActionSources.filter { bindActionSource ->
             bindActionSource.requirement(action)
         }.map { bindActionSource ->
-            try {
-                bindActionSource(state, action).catch {
-                    errorHandler.handle(it)
-                    emit(bindActionSource(it))
+            bindActionSourcesJobs.start(bindActionSource::class.java.simpleName) {
+                scope.launch {
+                    try {
+                        bindActionSource(state, action).catch {
+                            it.handleCancellationException {
+                                errorHandler.handle(it)
+                                emit(bindActionSource(it))
+                            }
+                        }
+                            .collect {
+                                _actions.emit(it)
+                            }
+                    } catch (t: Throwable) {
+                        t.handleCancellationException {
+                            errorHandler.handle(t)
+                            _actions.emit(bindActionSource(t))
+                        }
+                    }
                 }
-            } catch (t: Throwable) {
-                errorHandler.handle(t)
-                flowOf(bindActionSource(t))
             }
-        }.merge().collect {
-            _actions.emit(it)
         }
     }
 
-    private suspend inline fun dispatchActionHandler(state: State, action: Action) {
+    private fun dispatchActionHandler(state: State, action: Action) {
         actionHandlers.filter { actionHandler ->
             actionHandler.requirement(action)
         }.forEach { actionHandler ->
-            try {
-                withContext(actionHandler.dispatcher) {
-                    actionHandler(state, action)
+            actionHandlersJobs.start(actionHandler::class.java.simpleName) {
+                scope.launch(actionHandler.dispatcher) {
+                    try {
+                        actionHandler(state, action)
+                    } catch (t: Throwable) {
+                        t.handleCancellationException { errorHandler.handle(t) }
+                    }
                 }
-            } catch (t: Throwable) {
-                errorHandler.handle(t)
             }
         }
+    }
+
+    private suspend fun Throwable.handleCancellationException(func: suspend () -> Unit) {
+        if (this !is CancellationException) {
+            func()
+        }
+    }
+
+    private fun MutableMap<String, Job?>.start(key: String, func: () -> Job) {
+        this[key]?.cancel()
+        val job = func()
+        this[key] = job
     }
 }

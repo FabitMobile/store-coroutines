@@ -57,31 +57,15 @@ abstract class BaseStore<State, Action>(
 
     override fun dispose() {
         scope.cancel()
-        sideEffectsJobs.values.forEach {
-            it?.cancel()
-        }
         sideEffectsJobs.clear()
-
-        actionHandlersJobs.values.forEach {
-            it?.cancel()
-        }
         actionHandlersJobs.clear()
-
-        bindActionSourcesJobs.values.forEach {
-            it?.cancel()
-        }
         bindActionSourcesJobs.clear()
-
-        actionSourcesJobs.values.forEach {
-            it?.cancel()
-        }
         actionSourcesJobs.clear()
     }
 
     private suspend fun handleActions() {
         actions.collect { action ->
             val state = reducer.reduce(currentState, action)
-            println("${System.currentTimeMillis()}: _state.emit $action $state")
             _state.emit(state)
             _currentState = state
             dispatchSideEffect(state, action)

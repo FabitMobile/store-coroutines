@@ -65,6 +65,8 @@ abstract class BaseStore<State, Action>(
 
     private suspend fun handleActions() {
         actions.collect { action ->
+            if (reducer is EventsReducer<State, Action>)
+                reducer.preReduce(currentState, action)
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
             _currentState = state

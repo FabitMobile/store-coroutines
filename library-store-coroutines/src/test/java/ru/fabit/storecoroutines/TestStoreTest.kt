@@ -217,6 +217,30 @@ class TestStoreTest {
     }
 
     @Test
+    fun `test events`() = runBlocking {
+        val events = mutableListOf<List<TestEvent>>()
+
+        val store = storeMini()
+        val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            store.state.collect { state ->
+                events.add(state.events().toList())
+            }
+        }
+        delay(100)
+        store.dispatchAction(TestAction.BindAction4("1"))
+        Assert.assertEquals(
+            1,
+            events.flatten().size
+        )
+        Assert.assertEquals(
+            TestEvent.Event,
+            events.flatten().first()
+        )
+        store.dispose()
+        job.cancel()
+    }
+
+    @Test
     fun `increment_with_delay_test`() = runBlocking {
         var finishState = 0
         val store = storeCounter(repeat = 10, delay = 100)

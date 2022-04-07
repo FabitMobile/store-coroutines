@@ -1,6 +1,6 @@
 package ru.fabit.storecoroutines
 
-open class BaseState<Event>(
+open class EventsState<Event>(
     private val events: MutableList<Event> = mutableListOf()
 ) {
     fun events(): List<Event> {
@@ -23,7 +23,7 @@ open class BaseState<Event>(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as BaseState<*>
+        other as EventsState<*>
 
         if (events != other.events) return false
 

@@ -1,6 +1,6 @@
 package ru.fabit.storecoroutines
 
-class TestReducer : Reducer<TestState, TestAction> {
+class TestReducer : EventsReducer<TestState, TestAction> {
     override fun reduce(state: TestState, action: TestAction): TestState {
         return when (action) {
             is TestAction.NoAction -> state.copy(
@@ -8,7 +8,9 @@ class TestReducer : Reducer<TestState, TestAction> {
             )
             is TestAction.BootstrapAction -> state.copy(
                 value = "bootstrap action"
-            )
+            ).also {
+                it.addEvent(TestEvent.Event)
+            }
             is TestAction.Action -> state.copy(
                 value = action.value
             )

@@ -12,6 +12,8 @@ buildscript {
     }
 }
 
+project.version = "0.0.2"
+
 allprojects {
     repositories {
         google()

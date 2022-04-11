@@ -228,6 +228,7 @@ class TestStoreTest {
         }
         delay(100)
         store.dispatchAction(TestAction.BindAction4("1"))
+        delay(100)
         Assert.assertEquals(
             1,
             events.flatten().size
@@ -238,6 +239,38 @@ class TestStoreTest {
         )
         store.dispose()
         job.cancel()
+    }
+
+    @Test
+    fun `test events with resubscribe`() = runBlocking {
+        val events = mutableListOf<List<TestEvent>>()
+
+        val store = storeMini()
+        val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            store.state.collect { state ->
+                events.add(state.events().toList())
+            }
+        }
+        delay(100)
+        job.cancel()
+        val job2 = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            store.state.collect { state ->
+                events.add(state.events().toList())
+            }
+        }
+        delay(100)
+        store.dispatchAction(TestAction.BindAction4("1"))
+        delay(100)
+        Assert.assertEquals(
+            1,
+            events.flatten().size
+        )
+        Assert.assertEquals(
+            TestEvent.Event,
+            events.flatten().first()
+        )
+        store.dispose()
+        job2.cancel()
     }
 
     @Test

@@ -45,4 +45,6 @@ class TestReducer : EventsReducer<TestState, TestAction> {
             else -> state.copy()
         }
     }
+
+    override fun copy(state: TestState) = state.copy()
 }

@@ -7,16 +7,26 @@ open class EventsState<Event>(
         return events
     }
 
-    fun addEvent(event: Event) {
+    fun addEvent(event: Event): EventsState<Event> {
         events.add(event)
+        return this
     }
 
-    fun clearEvent(event: Event) {
+    fun addEvents(events: List<Event>): EventsState<Event> {
+        events.forEach {
+            this.events.add(it)
+        }
+        return this
+    }
+
+    fun clearEvent(event: Event): EventsState<Event> {
         events.remove(event)
+        return this
     }
 
-    fun clearEvents() {
+    fun clearEvents(): EventsState<Event> {
         events.clear()
+        return this
     }
 
     override operator fun equals(other: Any?): Boolean {

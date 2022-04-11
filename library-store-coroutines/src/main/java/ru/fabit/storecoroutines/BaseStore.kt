@@ -2,7 +2,10 @@ package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.catch
 import java.util.concurrent.CopyOnWriteArrayList
 
 abstract class BaseStore<State, Action>(
@@ -23,7 +26,10 @@ abstract class BaseStore<State, Action>(
     private var bindActionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
     private var actionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
 
-    private val _actions = MutableSharedFlow<Action>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.SUSPEND)
+    private val _actions = MutableSharedFlow<Action>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.SUSPEND
+    )
     private val actions = _actions.asSharedFlow()
 
     private val _state = MutableSharedFlow<State>(replay = 1)
@@ -65,11 +71,12 @@ abstract class BaseStore<State, Action>(
 
     private suspend fun handleActions() {
         actions.collect { action ->
-            if (reducer is EventsReducer<State, Action>)
-                reducer.preReduce(currentState, action)
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
-            _currentState = state
+            _currentState = if (reducer is EventsReducer<State, Action>) {
+                reducer.postReduce(state, action)
+            } else
+                state
             dispatchSideEffect(state, action)
             dispatchActionHandler(state, action)
             dispatchBindActionSource(state, action)

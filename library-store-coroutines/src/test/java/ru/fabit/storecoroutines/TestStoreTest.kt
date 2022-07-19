@@ -248,18 +248,19 @@ class TestStoreTest {
         val store = storeMini()
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
+                println("01 $state")
                 events.add(state.events().toList())
+                store.dispatchAction(TestAction.NoAction)
             }
         }
         delay(100)
         job.cancel()
         val job2 = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
+                println("02 $state")
                 events.add(state.events().toList())
             }
         }
-        delay(100)
-        store.dispatchAction(TestAction.BindAction4("1"))
         delay(100)
         Assert.assertEquals(
             1,

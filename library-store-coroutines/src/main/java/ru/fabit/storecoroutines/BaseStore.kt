@@ -2,14 +2,11 @@ package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.*
 import java.util.concurrent.CopyOnWriteArrayList
 
 abstract class BaseStore<State, Action>(
-    currentState: State,
+    startState: State,
     private val reducer: Reducer<State, Action>,
     private val errorHandler: ErrorHandler,
     bootstrapAction: Action? = null,
@@ -36,10 +33,10 @@ abstract class BaseStore<State, Action>(
     override val state: SharedFlow<State>
         get() {
             _state.tryEmit(currentState)
-            return _state.asSharedFlow()
+            return _state
         }
 
-    private var _currentState: State = currentState
+    private var _currentState: State = startState
     override val currentState: State
         get() = _currentState
 
@@ -71,12 +68,13 @@ abstract class BaseStore<State, Action>(
 
     private suspend fun handleActions() {
         actions.collect { action ->
+            if (reducer is EventsReducer<State, Action>) {
+                _currentState = reducer.clearEvents(currentState)
+            }
+
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
-            _currentState = if (reducer is EventsReducer<State, Action>) {
-                reducer.postReduce(state, action)
-            } else
-                state
+            _currentState = state
             dispatchSideEffect(state, action)
             dispatchActionHandler(state, action)
             dispatchBindActionSource(state, action)

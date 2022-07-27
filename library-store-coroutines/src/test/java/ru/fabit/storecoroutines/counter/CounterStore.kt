@@ -3,7 +3,6 @@ package ru.fabit.storecoroutines.counter
 import ru.fabit.storecoroutines.*
 import java.util.concurrent.CopyOnWriteArrayList
 
-
 class CounterStore(
     currentState: CounterState,
     reducer: CounterReducer,

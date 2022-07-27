@@ -11,7 +11,7 @@ class TestStore(
     actionSources: Iterable<ActionSource<TestAction>> = CopyOnWriteArrayList(),
     bindActionSources: Iterable<BindActionSource<TestState, TestAction>> = CopyOnWriteArrayList(),
     sideEffects: Iterable<SideEffect<TestState, TestAction>> = CopyOnWriteArrayList()
-) : BaseStore<TestState, TestAction>(
+) : EventsStore<TestState, TestAction, TestEvent>(
     currentState,
     reducer,
     errorHandler,

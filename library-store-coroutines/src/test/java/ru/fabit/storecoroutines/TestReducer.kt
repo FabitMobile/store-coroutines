@@ -8,8 +8,8 @@ class TestReducer : EventsReducer<TestState, TestAction> {
             )
             is TestAction.BootstrapAction -> state.copy(
                 value = "bootstrap action"
-            ).also {
-                it.addEvent(TestEvent.Event)
+            ).apply {
+                addEvent(TestEvent.Event)
             }
             is TestAction.Action -> state.copy(
                 value = action.value

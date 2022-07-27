@@ -3,7 +3,6 @@ package ru.fabit.storecoroutines.order
 import ru.fabit.storecoroutines.*
 import java.util.concurrent.CopyOnWriteArrayList
 
-
 class OrderStore(
     currentState: OrderState,
     reducer: OrderReducer,

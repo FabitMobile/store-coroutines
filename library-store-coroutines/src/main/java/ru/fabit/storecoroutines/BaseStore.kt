@@ -9,7 +9,7 @@ abstract class BaseStore<State, Action>(
     startState: State,
     private val reducer: Reducer<State, Action>,
     private val errorHandler: ErrorHandler,
-    bootstrapAction: Action? = null,
+    private val bootstrapAction: Action? = null,
     private val sideEffects: Iterable<SideEffect<State, Action>> = CopyOnWriteArrayList(),
     private val bindActionSources: Iterable<BindActionSource<State, Action>> = CopyOnWriteArrayList(),
     private val actionSources: Iterable<ActionSource<Action>> = CopyOnWriteArrayList(),
@@ -22,33 +22,29 @@ abstract class BaseStore<State, Action>(
     private var actionHandlersJobs: MutableMap<String, Job?> = mutableMapOf()
     private var bindActionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
     private var actionSourcesJobs: MutableMap<String, Job?> = mutableMapOf()
+    private var awaitSubscriptionJob: Job? = null
 
-    private val _actions = MutableSharedFlow<Action>(
+    protected val _actions = MutableSharedFlow<Action>(
         extraBufferCapacity = 1,
         onBufferOverflow = BufferOverflow.SUSPEND
     )
-    private val actions = _actions.asSharedFlow()
+    protected val actions = _actions.asSharedFlow()
 
-    private val _state = MutableSharedFlow<State>(replay = 1)
-    override val state: SharedFlow<State>
+    protected val _state = MutableSharedFlow<State>(replay = 1)
+    override val state: Flow<State>
         get() {
             _state.tryEmit(currentState)
             return _state
         }
 
-    private var _currentState: State = startState
+    protected var _currentState: State = startState
     override val currentState: State
         get() = _currentState
 
     init {
+        awaitSubscription()
         scope.launch {
             handleActions()
-        }
-        scope.launch {
-            bootstrapAction?.let {
-                dispatchAction(it)
-            }
-            dispatchActionSource()
         }
     }
 
@@ -64,14 +60,28 @@ abstract class BaseStore<State, Action>(
         actionHandlersJobs.clear()
         bindActionSourcesJobs.clear()
         actionSourcesJobs.clear()
+        awaitSubscriptionJob?.cancel()
     }
 
-    private suspend fun handleActions() {
-        actions.collect { action ->
-            if (reducer is EventsReducer<State, Action>) {
-                _currentState = reducer.clearEvents(currentState)
-            }
+    private fun awaitSubscription() {
+        awaitSubscriptionJob = scope.launch {
+            _actions.subscriptionCount
+                .filter { it > 0 }
+                .take(1)
+                .collect { count ->
+                    if (count > 0) {
+                        dispatchActionSource()
+                    }
+                }
+        }
+    }
 
+    protected open suspend fun handleActions() {
+        actions.onStart {
+            bootstrapAction?.let {
+                emit(it)
+            }
+        }.collect { action ->
             val state = reducer.reduce(currentState, action)
             _state.emit(state)
             _currentState = state
@@ -81,7 +91,7 @@ abstract class BaseStore<State, Action>(
         }
     }
 
-    private fun dispatchSideEffect(state: State, action: Action) {
+    protected open fun dispatchSideEffect(state: State, action: Action) {
         sideEffects.filter { sideEffect ->
             sideEffect.requirement(state, action)
         }.forEach { sideEffect ->
@@ -100,7 +110,7 @@ abstract class BaseStore<State, Action>(
         }
     }
 
-    private fun dispatchActionSource() {
+    protected open fun dispatchActionSource() {
         actionSources.map { actionSource ->
             actionSourcesJobs.start(actionSource::class.java.simpleName) {
                 scope.launch {
@@ -124,7 +134,7 @@ abstract class BaseStore<State, Action>(
         }
     }
 
-    private fun dispatchBindActionSource(state: State, action: Action) {
+    protected open fun dispatchBindActionSource(state: State, action: Action) {
         bindActionSources.filter { bindActionSource ->
             bindActionSource.requirement(action)
         }.map { bindActionSource ->
@@ -151,7 +161,7 @@ abstract class BaseStore<State, Action>(
         }
     }
 
-    private fun dispatchActionHandler(state: State, action: Action) {
+    protected open fun dispatchActionHandler(state: State, action: Action) {
         actionHandlers.filter { actionHandler ->
             actionHandler.requirement(action)
         }.forEach { actionHandler ->
@@ -167,15 +177,15 @@ abstract class BaseStore<State, Action>(
         }
     }
 
-    private suspend fun Throwable.handleCancellationException(func: suspend () -> Unit) {
+    private suspend fun Throwable.handleCancellationException(action: suspend () -> Unit) {
         if (this !is CancellationException) {
-            func()
+            action()
         }
     }
 
-    private fun MutableMap<String, Job?>.start(key: String, func: () -> Job) {
+    private fun MutableMap<String, Job?>.start(key: String, action: () -> Job) {
         this[key]?.cancel()
-        val job = func()
+        val job = action()
         this[key] = job
     }
 }

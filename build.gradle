@@ -1,7 +1,7 @@
 apply from: 'dependencies.gradle'
 
 buildscript {
-    ext.kotlin_version = '1.6.10'
+    ext.kotlin_version = '1.7.10'
     repositories {
         google()
         jcenter()
@@ -12,7 +12,7 @@ buildscript {
     }
 }
 
-project.version = "0.0.4"
+project.version = "0.1.0"
 
 allprojects {
     repositories {
@@ -22,6 +22,6 @@ allprojects {
     }
 }
 
-task clean (type: Delete) {
+task clean(type: Delete) {
     delete rootProject.buildDir
 }

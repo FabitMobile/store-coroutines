@@ -1,12 +1,8 @@
 package ru.fabit.storecoroutines
 
-open class EventsState<Event>(
-    private val events: MutableList<Event> = mutableListOf()
+abstract class EventsState<Event>(
+    val events: MutableList<Event> = mutableListOf()
 ) {
-    fun events(): List<Event> {
-        return events
-    }
-
     fun addEvent(event: Event): EventsState<Event> {
         events.add(event)
         return this
@@ -19,14 +15,13 @@ open class EventsState<Event>(
         return this
     }
 
-    fun clearEvent(event: Event): EventsState<Event> {
-        events.remove(event)
-        return this
+    @Suppress("UNCHECKED_CAST")
+    fun mergeEvents(otherState: Any?) {
+        events.addAll((otherState as EventsState<Event>).events)
     }
 
-    fun clearEvents(): EventsState<Event> {
-        events.clear()
-        return this
+    fun clearEvent(event: Event) {
+        events.remove(event)
     }
 
     override operator fun equals(other: Any?): Boolean {

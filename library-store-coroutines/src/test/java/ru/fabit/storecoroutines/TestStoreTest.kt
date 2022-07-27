@@ -223,7 +223,7 @@ class TestStoreTest {
         val store = storeMini()
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
-                events.add(state.events().toList())
+                events.add(state.events.toList())
             }
         }
         delay(100)
@@ -248,8 +248,7 @@ class TestStoreTest {
         val store = storeMini()
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
-                println("01 $state")
-                events.add(state.events().toList())
+                events.add(state.events.toList())
                 store.dispatchAction(TestAction.NoAction)
             }
         }
@@ -257,8 +256,7 @@ class TestStoreTest {
         job.cancel()
         val job2 = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
-                println("02 $state")
-                events.add(state.events().toList())
+                events.add(state.events.toList())
             }
         }
         delay(100)
@@ -275,7 +273,7 @@ class TestStoreTest {
     }
 
     @Test
-    fun `increment_with_delay_test`() = runBlocking {
+    fun increment_with_delay_test() = runBlocking {
         var finishState = 0
         val store = storeCounter(repeat = 10, delay = 100)
         val job = CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
@@ -290,7 +288,7 @@ class TestStoreTest {
     }
 
     @Test
-    fun `increment_without_delay_test`() = runBlocking {
+    fun increment_without_delay_test() = runBlocking {
         var finishState = 0
         val store = storeCounter(repeat = 100, delay = 0)
         val job = CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
@@ -305,7 +303,7 @@ class TestStoreTest {
     }
 
     @Test
-    fun `check_order`() = runBlocking {
+    fun check_order() = runBlocking {
         var finishState = ""
         val store = storeOrder(delay = 0)
         val job = CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {

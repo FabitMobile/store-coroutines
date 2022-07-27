@@ -16,7 +16,7 @@ BindActionSource.
 - ActionHandler - наблюдатель событий, выполняет действия, но ничего не отдает
 - Reducer - функция, которая принимает Action и State, и возвращает новый State.
 
-![UDF Store_Flow](https://github.com/FabitMobile/store-coroutines/raw/main/readme/udf_store1.png)
+![UDF Store_Flow](https://github.com/FabitMobile/store-coroutines/raw/main/readme/udf_store1.jpg)
 
 Рис. 1. Поток событий в Store
 
@@ -26,7 +26,7 @@ ActionSource, BindActionSource, SideEffect) также являются исто
 
 ### Принцип работы
 
-![UDF Store_Flow2](https://github.com/FabitMobile/store-coroutines/raw/main/readme/udf_store2.png)
+![UDF Store_Flow2](https://github.com/FabitMobile/store-coroutines/raw/main/readme/udf_store2.jpg)
 
 Рис. 2. Поток событий и состояний в Store
 

@@ -2,7 +2,7 @@ package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import java.util.concurrent.CopyOnWriteArrayList
 
 abstract class EventsStore<State : EventsState<Event>, Action, Event>(
@@ -33,7 +33,7 @@ abstract class EventsStore<State : EventsState<Event>, Action, Event>(
         }
 
     override suspend fun handleActions() {
-        actions.onStart {
+        actions.onSubscription {
             bootstrapAction?.let {
                 emit(it)
             }

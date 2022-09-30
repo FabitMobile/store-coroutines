@@ -41,7 +41,7 @@ abstract class BaseStore<State, Action>(
     override val currentState: State
         get() = _currentState
 
-    init {
+    override fun start() {
         awaitSubscription()
         scope.launch {
             handleActions()
@@ -77,7 +77,7 @@ abstract class BaseStore<State, Action>(
     }
 
     protected open suspend fun handleActions() {
-        actions.onStart {
+        actions.onSubscription {
             bootstrapAction?.let {
                 emit(it)
             }

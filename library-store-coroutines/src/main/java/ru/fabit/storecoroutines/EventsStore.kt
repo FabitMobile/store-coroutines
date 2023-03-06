@@ -1,6 +1,7 @@
 package ru.fabit.storecoroutines
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onSubscription
 import java.util.concurrent.CopyOnWriteArrayList
@@ -26,9 +27,9 @@ abstract class EventsStore<State : EventsState<Event>, Action, Event>(
 ) {
     override val state: Flow<State>
         get() {
-            _state.tryEmit(currentState)
+            _state.tryEmit(currentState.value)
             return _state.onEach {
-                _currentState = reducer.copy(currentState)
+                _currentState.value = reducer.copy(currentState.value)
             }
         }
 
@@ -38,10 +39,10 @@ abstract class EventsStore<State : EventsState<Event>, Action, Event>(
                 emit(it)
             }
         }.collect { action ->
-            val state = reducer.reduce(currentState, action)
-            state.mergeEvents(currentState)
+            val state = reducer.reduce(currentState.value, action)
+            state.mergeEvents(currentState.value)
             _state.emit(state)
-            _currentState = state
+            _currentState.value = state
             dispatchSideEffect(state, action)
             dispatchActionHandler(state, action)
             dispatchBindActionSource(state, action)

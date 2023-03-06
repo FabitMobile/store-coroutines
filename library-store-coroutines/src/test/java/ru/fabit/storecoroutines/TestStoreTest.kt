@@ -44,7 +44,7 @@ class TestStoreTest {
                 TestSideEffect3()
             )
         )
-    )
+    ).apply { start() }
 
     private fun storeMini() = TestStore(
         TestState("init"),
@@ -56,7 +56,7 @@ class TestStoreTest {
                 TestBindActionSource4()
             )
         )
-    )
+    ).apply { start() }
 
     private fun storeCounter(repeat: Int, delay: Long) = CounterStore(
         currentState = CounterState(1),
@@ -73,7 +73,7 @@ class TestStoreTest {
                 CounterActionSource(repeat, delay)
             )
         )
-    )
+    ).apply { start() }
 
     private fun storeOrder(delay: Long) = OrderStore(
         currentState = OrderState("_"),
@@ -86,7 +86,7 @@ class TestStoreTest {
                 OrderActionSource(delay)
             )
         )
-    )
+    ).apply { start() }
 
     @Test
     fun test() = runBlocking {
@@ -313,6 +313,40 @@ class TestStoreTest {
         }
         delay(2_000)
         Assert.assertEquals("_0123456789", finishState)
+        store.dispose()
+        job.cancel()
+    }
+
+    @Test
+    fun cleaning_event_test() = runBlocking {
+        val events = mutableListOf<TestEvent>()
+        val store = TestStore(
+            TestState("init"),
+            TestReducer(),
+            errorHandler,
+            TestAction.NoAction
+        ).apply { start() }
+        val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            store.state.collect { state ->
+                println(state)
+                println(state.events)
+                events.addAll(state.events.toList())
+            }
+        }
+        delay(1000)
+        store.dispatchAction(TestAction.EventAction)
+        store.dispatchAction(TestAction.NoAction)
+        store.dispatchAction(TestAction.NoAction)
+        store.dispatchAction(TestAction.NoAction)
+        store.dispatchAction(TestAction.EventAction)
+        store.dispatchAction(TestAction.Action("Action1-1"))
+        store.dispatchAction(TestAction.Action("Action1-2"))
+        store.dispatchAction(TestAction.Action("Action1-3"))
+        delay(100)
+        Assert.assertEquals(
+            2,
+            events.count()
+        )
         store.dispose()
         job.cancel()
     }

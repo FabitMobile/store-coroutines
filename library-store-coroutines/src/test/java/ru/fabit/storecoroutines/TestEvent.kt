@@ -11,4 +11,5 @@ sealed class TestEvent {
             return "TestEvent.Event2"
         }
     }
+    data class OrderEvent(val order: Int) : TestEvent()
 }

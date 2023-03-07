@@ -17,7 +17,10 @@ abstract class EventsState<Event>(
 
     @Suppress("UNCHECKED_CAST")
     fun mergeEvents(otherState: Any?) {
+        val newEvents = events.toList()
+        events.clear()
         events.addAll((otherState as EventsState<Event>).events)
+        events.addAll(newEvents)
     }
 
     fun clearEvent(event: Event) {

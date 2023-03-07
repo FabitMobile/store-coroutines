@@ -33,12 +33,12 @@ abstract class BaseStore<State, Action>(
     protected val _state = MutableSharedFlow<State>(replay = 1)
     override val state: Flow<State>
         get() {
-            _state.tryEmit(currentState.value)
+            _state.tryEmit(currentState)
             return _state
         }
 
-    protected var _currentState: MutableStateFlow<State> = MutableStateFlow(startState)
-    override val currentState: StateFlow<State>
+    protected var _currentState: State = startState
+    override val currentState: State
         get() = _currentState
 
     override fun start() {
@@ -82,9 +82,9 @@ abstract class BaseStore<State, Action>(
                 emit(it)
             }
         }.collect { action ->
-            val state = reducer.reduce(currentState.value, action)
+            val state = reducer.reduce(currentState, action)
             _state.emit(state)
-            _currentState.value = state
+            _currentState = state
             dispatchSideEffect(state, action)
             dispatchActionHandler(state, action)
             dispatchBindActionSource(state, action)

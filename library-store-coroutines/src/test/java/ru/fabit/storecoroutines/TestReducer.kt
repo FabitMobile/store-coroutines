@@ -41,8 +41,15 @@ class TestReducer : EventsReducer<TestState, TestAction> {
             is TestAction.SideAction3 -> state.copy(
                 value = action.value
             )
-            is TestAction.EventAction -> state.copy().apply {
+            is TestAction.EventAction -> state.copy(
+                value = "event action"
+            ).apply {
                 addEvent(TestEvent.Event2)
+            }
+            is TestAction.OrderEventAction -> state.copy(
+                value = "order event action ${action.order}"
+            ).apply {
+                addEvent(TestEvent.OrderEvent(action.order))
             }
 
             else -> state.copy()

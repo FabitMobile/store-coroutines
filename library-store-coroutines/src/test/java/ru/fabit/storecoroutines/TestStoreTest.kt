@@ -127,7 +127,6 @@ class TestStoreTest {
         val store = store()
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
-                // println(state.value)
                 states.add(state.value)
             }
         }
@@ -249,7 +248,6 @@ class TestStoreTest {
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
                 events.add(state.events.toList())
-                store.dispatchAction(TestAction.NoAction)
             }
         }
         delay(100)
@@ -328,8 +326,6 @@ class TestStoreTest {
         ).apply { start() }
         val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             store.state.collect { state ->
-                println(state)
-                println(state.events)
                 events.addAll(state.events.toList())
             }
         }
@@ -346,6 +342,36 @@ class TestStoreTest {
         Assert.assertEquals(
             2,
             events.count()
+        )
+        store.dispose()
+        job.cancel()
+    }
+
+    @Test
+    fun order_merging_events() = runBlocking {
+        val events = mutableListOf<TestEvent.OrderEvent>()
+        val store = TestStore(
+            TestState("init"),
+            TestReducer(),
+            errorHandler,
+            TestAction.OrderEventAction(0)
+        ).apply { start() }
+        delay(100)
+        store.dispatchAction(TestAction.OrderEventAction(1))
+        delay(100)
+        store.dispatchAction(TestAction.OrderEventAction(2))
+        delay(100)
+        store.dispatchAction(TestAction.OrderEventAction(3))
+        delay(100)
+        val job = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            store.state.collect { state ->
+                events.addAll(state.events.filterIsInstance<TestEvent.OrderEvent>().toList())
+            }
+        }
+        delay(100)
+        Assert.assertEquals(
+            listOf(0,1,2,3),
+            events.map { it.order }
         )
         store.dispose()
         job.cancel()

@@ -32,4 +32,8 @@ sealed class TestAction {
     data class SideAction2(val value: String) : TestAction()
 
     data class SideAction3(val value: String) : TestAction()
+
+    object EventAction : TestAction()
+
+    data class OrderEventAction(val order: Int) : TestAction()
 }

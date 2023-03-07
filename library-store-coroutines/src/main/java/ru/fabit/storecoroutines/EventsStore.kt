@@ -28,8 +28,8 @@ abstract class EventsStore<State : EventsState<Event>, Action, Event>(
         get() {
             _state.tryEmit(currentState)
             return _state.onEach {
-                _currentState = reducer.copy(currentState)
-            }
+                    _currentState = reducer.copy(currentState)
+                }
         }
 
     override suspend fun handleActions() {
@@ -39,9 +39,11 @@ abstract class EventsStore<State : EventsState<Event>, Action, Event>(
             }
         }.collect { action ->
             val state = reducer.reduce(currentState, action)
-            state.mergeEvents(currentState)
-            _state.emit(state)
+            if (_state.subscriptionCount.value == 0) {
+                state.mergeEvents(currentState)
+            }
             _currentState = state
+            _state.emit(state)
             dispatchSideEffect(state, action)
             dispatchActionHandler(state, action)
             dispatchBindActionSource(state, action)
